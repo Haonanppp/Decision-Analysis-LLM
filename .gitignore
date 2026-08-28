@@ -1,0 +1,12 @@
+# Secrets - the API key lives here; never commit it.
+.env
+
+# Local case output (contains test-session content)
+cases/
+
+# Python
+__pycache__/
+*.pyc
+
+# IDE
+.idea/

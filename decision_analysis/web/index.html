@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Decision Analysis</title>
+<style>
+:root {
+  --ink: #0b0b0b; --ink-2: #52514e; --muted: #898781;
+  --hairline: #e1e0d9; --surface: #fcfcfb; --page: #f9f9f7;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--page); color: var(--ink);
+  font: 15px/1.6 system-ui, -apple-system, "Segoe UI", sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+header {
+  position: sticky; top: 0; z-index: 10; background: var(--page);
+  border-bottom: 1px solid var(--hairline); padding: 14px 24px 0;
+}
+.head-row { max-width: 780px; margin: 0 auto; }
+.wordmark { font-weight: 700; font-size: 15px; letter-spacing: -0.01em; }
+.steps { display: flex; gap: 2px; margin: 10px 0 0; overflow-x: auto; }
+.step {
+  flex: 1; min-width: 0; text-align: center; font-size: 10.5px;
+  color: var(--muted); padding: 4px 2px 8px; border-bottom: 2px solid var(--hairline);
+  white-space: nowrap; text-transform: uppercase; letter-spacing: 0.06em;
+}
+.step.active { color: var(--ink); border-bottom-color: var(--ink); font-weight: 600; }
+.step.past { color: var(--ink-2); border-bottom-color: var(--ink-2); }
+main { max-width: 780px; margin: 0 auto; padding: 28px 24px 110px; }
+.line { margin: 2px 0; white-space: pre-wrap; }
+.section-label {
+  margin: 26px 0 8px; font-size: 12px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-2);
+  border-top: 1px solid var(--hairline); padding-top: 14px;
+}
+.thinking-line { color: var(--muted); font-style: italic; }
+.user-chip {
+  margin: 14px 0 14px auto; max-width: 85%; width: fit-content;
+  background: var(--ink); color: #fff; padding: 8px 14px; border-radius: 10px 10px 2px 10px;
+  white-space: pre-wrap;
+}
+.q-card {
+  margin: 20px 0 8px; padding: 14px 16px; background: var(--surface);
+  border: 1px solid var(--hairline); border-left: 3px solid var(--ink);
+  border-radius: 0 8px 8px 0; font-weight: 600;
+}
+.dock {
+  position: fixed; bottom: 0; left: 0; right: 0; background: var(--page);
+  border-top: 1px solid var(--hairline); padding: 10px 24px 14px;
+}
+.dock-inner { max-width: 780px; margin: 0 auto; }
+.controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-start; }
+button {
+  font: inherit; font-size: 14px; padding: 8px 16px; cursor: pointer;
+  background: #fff; color: var(--ink); border: 1px solid var(--ink);
+  border-radius: 8px; transition: background .12s, color .12s;
+}
+button:hover { background: var(--ink); color: #fff; }
+button.ghost { border-color: var(--hairline); color: var(--ink-2); }
+button.ghost:hover { background: var(--hairline); color: var(--ink); }
+button.primary { background: var(--ink); color: #fff; }
+button.primary:hover { background: #333; }
+input[type=text], input[type=number], textarea {
+  font: inherit; font-size: 14px; padding: 8px 12px; border: 1px solid var(--hairline);
+  border-radius: 8px; background: #fff; color: var(--ink); flex: 1; min-width: 120px;
+}
+input:focus, textarea:focus { outline: none; border-color: var(--ink); }
+textarea { width: 100%; min-height: 84px; resize: vertical; }
+.choice-list { display: flex; flex-direction: column; gap: 6px; width: 100%; }
+.choice-list button { text-align: left; }
+.edit-rows { width: 100%; display: flex; flex-direction: column; gap: 6px; margin-bottom: 8px; }
+.edit-row {
+  display: flex; align-items: center; gap: 10px; background: #fff;
+  border: 1px solid var(--hairline); border-radius: 8px; padding: 7px 12px;
+}
+.edit-row span { flex: 1; }
+.edit-row button {
+  padding: 2px 9px; font-size: 13px;
+  border-color: #d03b3b; color: #d03b3b; font-weight: 600;
+}
+.edit-row button:hover { background: #d03b3b; border-color: #d03b3b; color: #fff; }
+.inline-editor {
+  margin: 8px 0 18px; padding: 14px; background: var(--surface);
+  border: 1px solid var(--hairline); border-radius: 8px;
+}
+.inline-editor .controls { margin-top: 8px; }
+.spent { opacity: 0.5; pointer-events: none; }
+.assess-row { display: flex; gap: 8px; align-items: center; }
+.assess-row input { width: 110px; flex: none; }
+.assess-hint { font-size: 12px; color: var(--muted); width: 100%; margin-top: 4px; }
+.waiting { color: var(--muted); font-style: italic; font-size: 13px; }
+.done-panel { margin: 28px 0; }
+.done-panel iframe {
+  width: 100%; height: 75vh; border: 1px solid var(--hairline); border-radius: 8px;
+  background: #fff; margin-top: 12px;
+}
+.banner {
+  margin: 20px 0; padding: 12px 16px; border: 1px solid var(--ink);
+  border-radius: 8px; font-weight: 600; background: var(--surface);
+}
+</style>
+</head>
+<body>
+<header>
+  <div class="head-row">
+    <div class="wordmark">Decision Analysis</div>
+    <div class="steps" id="steps"></div>
+  </div>
+</header>
+<main id="log"></main>
+<div class="dock" id="dock"><div class="dock-inner" id="dockInner">
+  <div class="waiting">Connecting…</div>
+</div></div>
+
+<script>
+const PHASES = ["intake","framing","options","critique","research","preferences","scoring","analysis","report"];
+const stepsEl = document.getElementById("steps");
+PHASES.forEach(p => {
+  const d = document.createElement("div");
+  d.className = "step"; d.id = "step-" + p; d.textContent = p;
+  stepsEl.appendChild(d);
+});
+const log = document.getElementById("log");
+const dockInner = document.getElementById("dockInner");
+let currentPrompt = null;
+
+function scrollDown() { window.scrollTo(0, document.body.scrollHeight); }
+function el(tag, cls, text) {
+  const e = document.createElement(tag);
+  if (cls) e.className = cls;
+  if (text !== undefined) e.textContent = text;
+  return e;
+}
+function addOutput(text) {
+  if (!text.trim()) return;
+  let cls = "line";
+  let t = text;
+  const header = text.match(/^=+\s*(?:\d+\.\s*)?(.+?)\s*=+$/);
+  if (header) { log.appendChild(el("div", "section-label", header[1])); scrollDown(); return; }
+  if (text.includes("[thinking...]") || text.includes("[researching")) cls = "line thinking-line";
+  log.appendChild(el("div", cls, t));
+  scrollDown();
+}
+function setPhase(name) {
+  const idx = PHASES.indexOf(name);
+  PHASES.forEach((p, i) => {
+    const s = document.getElementById("step-" + p);
+    s.className = "step" + (i < idx ? " past" : i === idx ? " active" : "");
+  });
+}
+function setWaiting() {
+  dockInner.innerHTML = "";
+  dockInner.appendChild(el("div", "waiting", "Working…"));
+}
+let activeInline = null;
+
+function send(value, displayText) {
+  ws.send(JSON.stringify({ type: "answer", value }));
+  if (activeInline) { activeInline.classList.add("spent"); activeInline = null; }
+  if (displayText !== null) {
+    log.appendChild(el("div", "user-chip", displayText || "(skip)"));
+  }
+  currentPrompt = null;
+  setWaiting();
+  scrollDown();
+}
+
+let lastCardText = null;
+
+function renderPrompt(ev) {
+  currentPrompt = ev;
+  dockInner.innerHTML = "";
+  const q = ev.prompt.replace(/\s*>\s*$/, "");
+  const kind = ev.kind, meta = ev.meta || {};
+
+  // The question lives in the chat transcript, like a conversation turn;
+  // the dock below holds only the controls.
+  let cardText = q;
+  if (kind === "list_edit") {
+    cardText = "Review the " + (meta.noun || "list") +
+               " below — remove items, add your own, or confirm.";
+  } else if (kind === "assessment" && meta.alternative) {
+    cardText = "Score “" + meta.alternative + "” on " + meta.criterion;
+  }
+  if (cardText && cardText !== lastCardText) {
+    log.appendChild(el("div", "q-card", cardText));
+    lastCardText = cardText;
+  }
+
+  // ALL controls render inline in the chat flow - nothing ever covers the
+  // transcript. The dock is just a slim status bar.
+  const card = el("div", "inline-editor");
+  const controls = el("div", "controls");
+  card.appendChild(controls);
+  log.appendChild(card);
+  activeInline = card;
+  dockInner.innerHTML = "";
+  dockInner.appendChild(el("div", "waiting", "Answer in the card above ↑"));
+
+  if (kind === "yesno") {
+    const yes = el("button", "", "Yes"), no = el("button", "", "No");
+    yes.onclick = () => send("y", "Yes");
+    no.onclick = () => send("n", "No");
+    controls.append(yes, no);
+  } else if (kind === "choice") {
+    const list = el("div", "choice-list");
+    (meta.choices || []).forEach(c => {
+      const b = el("button", "", c.label);
+      b.onclick = () => send(c.value, c.label);
+      list.appendChild(b);
+    });
+    if (meta.skip_label) {
+      const s = el("button", "ghost", meta.skip_label);
+      s.onclick = () => send("", meta.skip_label);
+      list.appendChild(s);
+    }
+    controls.appendChild(list);
+  } else if (kind === "list_edit") {
+    const rows = el("div", "edit-rows");
+    (meta.items || []).forEach((item, i) => {
+      const row = el("div", "edit-row");
+      row.appendChild(el("span", "", item));
+      const x = el("button", "", "✕");
+      x.title = "Remove";
+      x.onclick = () => send("d " + (i + 1), "Removed: " + item.split(" - ")[0]);
+      row.appendChild(x);
+      rows.appendChild(row);
+    });
+    card.insertBefore(rows, controls);
+    const addInput = el("input"); addInput.type = "text";
+    addInput.placeholder = "Add your own…";
+    const addBtn = el("button", "ghost", "Add");
+    addBtn.onclick = () => {
+      if (addInput.value.trim()) send("a " + addInput.value.trim(), "Added: " + addInput.value.trim());
+    };
+    const ok = el("button", "primary", "Looks good — continue");
+    ok.onclick = () => send("", "Confirmed list");
+    controls.append(addInput, addBtn, ok);
+  } else if (kind === "number") {
+    const input = el("input"); input.type = "number";
+    if (meta.min != null) input.min = meta.min;
+    if (meta.max != null) input.max = meta.max;
+    input.placeholder = (meta.min != null && meta.max != null) ? `${meta.min}–${meta.max}` : "";
+    const go = el("button", "primary", "Send");
+    const submit = () => { if (input.value !== "") send(input.value, input.value); };
+    go.onclick = submit;
+    input.onkeydown = e => { if (e.key === "Enter") submit(); };
+    controls.append(input, go);
+    input.focus();
+  } else if (kind === "assessment") {
+    const row = el("div", "assess-row");
+    const low = el("input"), mode = el("input"), high = el("input");
+    [low, mode, high].forEach(i => { i.type = "number"; i.step = "any"; });
+    low.placeholder = "low (opt.)"; mode.placeholder = "most likely"; high.placeholder = "high (opt.)";
+    const go = el("button", "primary", "Send");
+    const submit = () => {
+      if (mode.value === "") return;
+      let v = mode.value, label = mode.value;
+      if (low.value !== "" && high.value !== "") {
+        v = `${low.value}/${mode.value}/${high.value}`; label = v;
+      }
+      send(v, label);
+    };
+    go.onclick = submit;
+    [low, mode, high].forEach(i => i.onkeydown = e => { if (e.key === "Enter") submit(); });
+    row.append(low, mode, high, go);
+    controls.appendChild(row);
+    controls.appendChild(el("div", "assess-hint",
+      "Fill only 'most likely' for a point value, or all three for a low / likely / high range."));
+    mode.focus();
+  } else { // text
+    if (meta.multiline) {
+      const ta = el("textarea");
+      ta.placeholder = "Type your answer… (Enter for a new line)";
+      const go = el("button", "primary", "Send");
+      const skip = el("button", "ghost", "Don't know");
+      go.onclick = () => { if (ta.value.trim()) send(ta.value.trim(), ta.value.trim()); };
+      skip.onclick = () => send("unknown", "Don't know");
+      controls.append(ta, go, skip);
+      ta.focus();
+    } else {
+      const input = el("input"); input.type = "text";
+      const go = el("button", "primary", "Send");
+      const submit = () => send(input.value.trim(), input.value.trim() || "(skip)");
+      go.onclick = submit;
+      input.onkeydown = e => { if (e.key === "Enter") submit(); };
+      controls.append(input, go);
+      input.focus();
+    }
+  }
+  scrollDown();
+}
+
+function renderDone(ev) {
+  dockInner.innerHTML = "";
+  dockInner.appendChild(el("div", "waiting", "Session complete."));
+  const panel = el("div", "done-panel");
+  const banner = el("div", "banner", "Analysis complete — your report is ready.");
+  panel.appendChild(banner);
+  if (ev.report_url) {
+    // Carry the access token so the report opens even if cookies are blocked.
+    const url = ev.report_url +
+      (token ? (ev.report_url.includes("?") ? "&" : "?") +
+               "token=" + encodeURIComponent(token) : "");
+    const open = el("button", "primary", "Open report in a new tab");
+    open.onclick = () => window.open(url, "_blank");
+    panel.appendChild(open);
+    const frame = document.createElement("iframe");
+    frame.src = url;
+    panel.appendChild(frame);
+  }
+  log.appendChild(panel);
+  scrollDown();
+}
+
+const token = new URLSearchParams(location.search).get("token");
+const ws = new WebSocket(
+  (location.protocol === "https:" ? "wss://" : "ws://") + location.host +
+  "/ws" + (token ? "?token=" + encodeURIComponent(token) : "")
+);
+ws.onopen = () => { dockInner.innerHTML = ""; dockInner.appendChild(el("div", "waiting", "Starting…")); };
+ws.onmessage = m => {
+  const ev = JSON.parse(m.data);
+  if (ev.type === "output") addOutput(ev.text);
+  else if (ev.type === "phase") setPhase(ev.name);
+  else if (ev.type === "prompt") renderPrompt(ev);
+  else if (ev.type === "done") renderDone(ev);
+  else if (ev.type === "error") {
+    log.appendChild(el("div", "banner", "Error: " + ev.text));
+    dockInner.innerHTML = "";
+    scrollDown();
+  }
+};
+ws.onclose = () => {
+  if (currentPrompt !== null) {
+    log.appendChild(el("div", "banner", "Connection lost — refresh to start a new session."));
+    dockInner.innerHTML = "";
+  }
+};
+</script>
+</body>
+</html>

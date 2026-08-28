@@ -1,0 +1,7 @@
+.env
+.git
+.idea
+__pycache__
+**/__pycache__
+cases
+*.pyc
